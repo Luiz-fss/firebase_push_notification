@@ -1,4 +1,5 @@
 import 'package:flushbar/flushbar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -9,6 +10,11 @@ void main() async{
   var a = await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  final status = await FirebaseMessaging.instance.requestPermission();
+  if( status.authorizationStatus == AuthorizationStatus.authorized){}
+
+  final checarStats =  await FirebaseMessaging.instance.getNotificationSettings();
   runApp(const MyApp());
 }
 
@@ -50,13 +56,18 @@ class _MyHomePageState extends State<MyHomePage> {
     // TODO: implement initState
     super.initState();
     initializeFcm();
-
   }
 
   Future<void> initializeFcm()async{
     //Registro no firebase
-    final token = await messaging.getToken();
+    final token = await messaging.getToken(
+      vapidKey: "BCxPfIPPZfv4N7Y6JdKbzM4EHzUykr8PK1OGKXA-K9hyOMon3AKA_-p28eoWzTsyuSsRIskguxeuMMILEcnVnHI"
+    );
     print(token);
+    if(!kIsWeb){
+      messaging.subscribeToTopic("corinthians");
+    }
+
     FirebaseMessaging.onMessage.listen((event) {
       if(event.notification!=null){
         Flushbar(
@@ -65,9 +76,6 @@ class _MyHomePageState extends State<MyHomePage> {
           title: event.notification?.title,
           message: event.notification?.body,
           duration: Duration(seconds: 3),
-
-
-
         ).show(context);
       }
       print(event.data);
@@ -79,6 +87,13 @@ class _MyHomePageState extends State<MyHomePage> {
     FirebaseMessaging.onMessageOpenedApp.listen((event) {
       print(event.notification.title);
     });
+
+    /*Tras mensagem inicial que tenha recebido caso tenha acabado de abrir
+    * o aplicativo*/
+    final RemoteMessage mensagemTerminated = await messaging.getInitialMessage();
+    if(mensagemTerminated!=null){
+      print("toque com app em estado terminated : ${mensagemTerminated.notification.title}");
+    }
   }
 
   void _incrementCounter() {
